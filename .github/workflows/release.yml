@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install NASM
+        run: choco install nasm -y --no-progress
+
+      - name: Add Strawberry Perl and NASM to PATH
+        shell: pwsh
+        run: |
+          'C:\Strawberry\perl\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
+          'C:\Program Files\NASM'  | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Determine version label
+        id: meta
+        shell: pwsh
+        run: |
+          $ref = '${{ github.ref_name }}'
+          if ($ref -match '^v(.+)$') {
+              $version = $Matches[1]
+          } else {
+              $version = 'dev'
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "version=$version"
+
+      - name: Build + test
+        shell: pwsh
+        run: |
+          .\build.ps1 -InstallPrefix 'C:\OpenSSL-Win64' -OpenSSLDir 'C:\OpenSSL-Win64\ssl'
+
+      - name: Install to staging
+        shell: pwsh
+        run: .\install.ps1
+
+      - name: Package ZIP
+        id: pkg
+        shell: pwsh
+        run: |
+          $zip = "OpenSSL-Win64-${{ steps.meta.outputs.version }}.zip"
+          Compress-Archive -Path 'C:\OpenSSL-Win64' -DestinationPath $zip
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Get-Item $zip | Select-Object Name, Length
+
+      - name: Upload artifact (all runs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.zip }}
+          path: ${{ steps.pkg.outputs.zip }}
+
+      - name: Create GitHub Release (tag push only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.pkg.outputs.zip }}
+          generate_release_notes: true
