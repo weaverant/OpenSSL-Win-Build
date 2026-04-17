@@ -7,6 +7,21 @@ submodule pinned to a release tag. Scripts default to the conventional
 Windows install layout (`C:\Program Files\OpenSSL-Win64` +
 `C:\Program Files\Common Files\SSL`).
 
+## Downloads
+
+Pre-built 64-bit Windows binaries are attached to each
+[GitHub Release](https://github.com/weaverant/OpenSSL-Win-Build/releases):
+
+- **`OpenSSL-Win64-<version>-setup.exe`** — installer. Installs to
+  `C:\Program Files\OpenSSL-Win64`, creates an Add/Remove Programs entry,
+  optional "Add to PATH" task. Requires admin (UAC).
+- **`OpenSSL-Win64-<version>.zip`** — the same install tree as a ZIP.
+  Extract to `C:\` to land the contents at `C:\Program Files\OpenSSL-Win64\`
+  and `C:\Program Files\Common Files\SSL\` (the binaries have those paths
+  baked in, so other extraction points won't work).
+
+To build from source yourself, read on.
+
 ## Prerequisites
 
 - **Visual Studio 2022** (Community or Build Tools) with the "Desktop development
