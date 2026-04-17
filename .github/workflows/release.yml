@@ -19,8 +19,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install NASM
-        run: choco install nasm -y --no-progress
+      - name: Install NASM and Inno Setup
+        run: choco install nasm innosetup -y --no-progress
 
       - name: Add Strawberry Perl and NASM to PATH
         shell: pwsh
@@ -46,33 +46,35 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "version=$version"
 
-      - name: Build + test
+      - name: Build + test + stage + installer
         shell: pwsh
-        run: |
-          .\build.ps1 -InstallPrefix 'C:\OpenSSL-Win64' -OpenSSLDir 'C:\OpenSSL-Win64\ssl'
+        run: .\pack.ps1 -Version '${{ steps.meta.outputs.version }}'
 
-      - name: Install to staging
-        shell: pwsh
-        run: .\install.ps1
-
-      - name: Package ZIP
+      - name: Package ZIP of staged tree
         id: pkg
         shell: pwsh
         run: |
-          $zip = "OpenSSL-Win64-${{ steps.meta.outputs.version }}.zip"
-          Compress-Archive -Path 'C:\OpenSSL-Win64' -DestinationPath $zip
-          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Get-Item $zip | Select-Object Name, Length
+          $version = '${{ steps.meta.outputs.version }}'
+          $zip   = "OpenSSL-Win64-$version.zip"
+          $setup = "dist\OpenSSL-Win64-$version-setup.exe"
+          Compress-Archive -Path '.stage\Program Files\*' -DestinationPath $zip
+          "zip=$zip"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "setup=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Get-Item $zip, $setup | Select-Object Name, Length
 
-      - name: Upload artifact (all runs)
+      - name: Upload artifacts (all runs)
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.pkg.outputs.zip }}
-          path: ${{ steps.pkg.outputs.zip }}
+          name: OpenSSL-Win64-${{ steps.meta.outputs.version }}
+          path: |
+            ${{ steps.pkg.outputs.zip }}
+            ${{ steps.pkg.outputs.setup }}
 
       - name: Create GitHub Release (tag push only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.pkg.outputs.zip }}
+          files: |
+            ${{ steps.pkg.outputs.zip }}
+            ${{ steps.pkg.outputs.setup }}
           generate_release_notes: true
