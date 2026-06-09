@@ -78,3 +78,10 @@ jobs:
             ${{ steps.pkg.outputs.zip }}
             ${{ steps.pkg.outputs.setup }}
           generate_release_notes: true
+          body: |
+            Windows 64-bit build of **OpenSSL ${{ steps.meta.outputs.version }}**.
+
+            Upstream release notes, changelog, and security advisories:
+            https://github.com/openssl/openssl/releases/tag/openssl-${{ steps.meta.outputs.version }}
+
+            Built from the `openssl` submodule pinned to `openssl-${{ steps.meta.outputs.version }}`.
